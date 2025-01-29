@@ -36,7 +36,7 @@ jobs:
           monitor-on-build: false
   scan_build_docker_image:
     machine:
-      image: ubuntu-2004:202101-01
+      image: ubuntu-2204:202301-01
     resource_class: medium
     steps:
       - checkout
@@ -59,7 +59,7 @@ jobs:
           tag: 0.1.<< pipeline.number >>          
   terraform_deploy_aws_ecs:
     machine:
-      image: ubuntu-2004:202101-01
+      image: ubuntu-2204:202301-01
     resource_class: medium
     steps:
       - checkout
@@ -89,7 +89,7 @@ jobs:
       - run: sleep 90  
   smoketest_deployment:
     machine:
-      image: ubuntu-2004:202101-01
+      image: ubuntu-2204:202301-01
     resource_class: medium
     steps:
       - checkout
@@ -102,7 +102,7 @@ jobs:
             ./test/smoke_test $ENDPOINT
   terraform_destroy_aws_ecs:
     machine:
-      image: ubuntu-2004:202101-01
+      image: ubuntu-2204:202301-01
     resource_class: medium
     steps:
       - checkout
