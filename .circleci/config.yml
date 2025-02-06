@@ -1,43 +1,46 @@
 version: 2.1
 orbs:
-  aws-ecr: circleci/aws-ecr@7.2.0
-  snyk: snyk/snyk@0.1.0
-  stackhawk: stackhawk/stackhawk@1.0.3
-  node: circleci/node@4.2.0
-  terraform: circleci/terraform@3.0.0
+  aws-ecr: circleci/aws-ecr@7.6.0  # Update to the latest version
+  snyk: snyk/snyk@2.0.0  # Update to the latest version
+  stackhawk: stackhawk/stackhawk@2.0.0  # Update to the latest version
+  node: circleci/node@5.0.0  # Update to the latest version
+  terraform: circleci/terraform@3.0.0  # Check for the latest terraform orb version
+
 jobs:
   run_tests:
     docker:
-      - image: cimg/node:14.16.0
+      - image: cimg/node:16.0  # Upgrade to a more recent Node version
     steps:
       - checkout
       - node/install-packages:
-          override-ci-command: npm install
+          override-ci-command: npm ci  # Use `npm ci` for cleaner installs
           cache-path: ~/project/node_modules
       - run:
           name: Run Unit Tests
           command: |
-            ./node_modules/mocha/bin/mocha test/ --reporter mocha-junit-reporter --reporter-options mochaFile=./test/test-results.xml
-            ./node_modules/mocha/bin/mocha test/ --reporter mochawesome --reporter-options reportDir=test-results,reportFilename=test-results
+            ./node_modules/.bin/mocha test/ --reporter mocha-junit-reporter --reporter-options mochaFile=./test/test-results.xml
+            ./node_modules/.bin/mocha test/ --reporter mochawesome --reporter-options reportDir=test-results,reportFilename=test-results
       - store_test_results:
           path: test/
       - store_artifacts:
-          path: test-results          
+          path: test-results
+
   scan_app:
     docker:
-      - image: cimg/node:14.16.0
+      - image: cimg/node:16.0  # Same as above for consistency
     steps:
       - checkout
       - run:
-          name: Snyk Scan Application files 
-          command: npm install 
+          name: Install dependencies for Snyk scan
+          command: npm ci
       - snyk/scan:
           fail-on-issues: false
           monitor-on-build: false
+
   scan_build_docker_image:
     machine:
-      image: ubuntu-2204:202301-01
-    resource_class: medium
+      image: ubuntu-20.04  # Replace with a valid CircleCI machine image
+    resource_class: medium  # Ensure you're using a valid resource class
     steps:
       - checkout
       - aws-ecr/build-image:
@@ -56,15 +59,16 @@ jobs:
       - aws-ecr/push-image:
           account-url: AWS_ECR_ACCOUNT_URL
           repo: $AWS_ECR_REPO
-          tag: 0.1.<< pipeline.number >>          
+          tag: 0.1.<< pipeline.number >>
+
   terraform_deploy_aws_ecs:
     machine:
-      image: ubuntu-2204:202301-01
-    resource_class: medium
+      image: ubuntu-20.04  # Replace with a valid CircleCI machine image
+    resource_class: medium  # Ensure you're using a valid resource class
     steps:
       - checkout
       - terraform/install:
-          terraform_version: "1.0.2"
+          terraform_version: "1.5.0"  # Upgrade Terraform version
           arch: "amd64"
           os: "linux"
       - terraform/init:
@@ -86,11 +90,12 @@ jobs:
           root: /tmp/ecs/
           paths:
             - "*"      
-      - run: sleep 90  
+      - run: sleep 90
+
   smoketest_deployment:
     machine:
-      image: ubuntu-2204:202301-01
-    resource_class: medium
+      image: ubuntu-20.04  # Replace with a valid CircleCI machine image
+    resource_class: medium  # Ensure you're using a valid resource class
     steps:
       - checkout
       - attach_workspace:
@@ -100,17 +105,18 @@ jobs:
           command: |
             source /tmp/ecs/endpoint
             ./test/smoke_test $ENDPOINT
+
   terraform_destroy_aws_ecs:
     machine:
-      image: ubuntu-2204:202301-01
-    resource_class: medium
+      image: ubuntu-20.04  # Replace with a valid CircleCI machine image
+    resource_class: medium  # Ensure you're using a valid resource class
     steps:
       - checkout
       - run:
           name: Create .terraformrc file locally
           command: echo "credentials \"app.terraform.io\" {token = \"$TERRAFORM_TOKEN\"}" > $HOME/.terraformrc
       - terraform/install:
-          terraform_version: "1.0.2"
+          terraform_version: "1.5.0"  # Upgrade Terraform version
           arch: "amd64"
           os: "linux"
       - terraform/init:
@@ -119,6 +125,7 @@ jobs:
           path: ./terraform/ecs
       - terraform/destroy:
           path: ./terraform/ecs
+
 workflows:
   build:
     jobs:
